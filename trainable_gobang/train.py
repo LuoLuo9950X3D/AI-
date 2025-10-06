@@ -495,13 +495,25 @@ def train_model(args, has_gpu=False):
     # 初始化数据生成器
     data_gen = EnhancedDataGenerator(board_size=args.board_size)
     
-    # 初始化模型 - 使用优化配置
+    # 初始化模型 - 使用优化配置和命令行参数
     model_config = {
         'learning_rate': optimization_config['learning_rate'],
-        'residual_blocks': optimization_config['residual_blocks'],
         'policy_weight': optimization_config['policy_weight'],
         'value_weight': optimization_config['value_weight']
     }
+    
+    print(f"开始训练，参数:\n- 棋盘大小: {args.board_size}\n- 训练轮数: {args.epochs}\n- 批次大小: {args.batch_size}\n- 验证集比例: {args.validation_split}")
+    if args.model_path:
+        print(f"- 使用预训练模型: {args.model_path}")
+    if args.use_self_play_data:
+        print(f"- 使用自我对弈数据: {args.self_play_file}")
+    if args.use_battle_mode:
+        print(f"- 使用对战模式训练，对战次数: {args.num_battles}")
+    
+    # 补充模型配置
+    model_config.update({
+        'residual_blocks': optimization_config['residual_blocks']
+    })
     
     model = GobangModel(
         board_size=args.board_size,
@@ -575,9 +587,9 @@ def train_model(args, has_gpu=False):
     )
     
     # 开始训练
-    # 优先使用配置文件中的epochs和batch_size
-    epochs = optimization_config.get('epochs', args.epochs)
-    batch_size = optimization_config.get('batch_size', args.batch_size)
+    # 优先使用命令行参数，如果没有则使用配置文件参数
+    epochs = args.epochs if args.epochs != 50 else optimization_config.get('epochs', args.epochs)
+    batch_size = args.batch_size if args.batch_size != 64 else optimization_config.get('batch_size', args.batch_size)
     
     print(f"开始训练模型，共{epochs}轮，批量大小：{batch_size}...")
     start_time = time.time()

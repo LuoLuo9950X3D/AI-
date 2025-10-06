@@ -1,17 +1,37 @@
 import numpy as np
 import tensorflow as tf
-# 配置GPU使用
+import os
+
+# 检查TensorFlow是否支持GPU
+is_gpu_supported = tf.test.is_built_with_cuda()
 physical_devices = tf.config.list_physical_devices('GPU')
-if physical_devices:
-    try:
-        # 设置内存增长，避免一次性占用全部GPU内存
-        for gpu in physical_devices:
-            tf.config.experimental.set_memory_growth(gpu, True)
-        print(f"成功配置GPU: {[gpu.name for gpu in physical_devices]}")
-    except RuntimeError as e:
-        print(f"GPU配置错误: {e}")
-else:
-    print("未检测到可用GPU，将使用CPU进行计算")
+has_gpu = len(physical_devices) > 0
+
+# 设置设备使用策略
+def get_preferred_device():
+    """获取优先使用的设备"""
+    if is_gpu_supported and has_gpu:
+        try:
+            # 设置内存增长，避免一次性占用全部GPU内存
+            for gpu in physical_devices:
+                tf.config.experimental.set_memory_growth(gpu, True)
+            print(f"成功配置GPU: {[gpu.name for gpu in physical_devices]}")
+            return '/GPU:0'
+        except RuntimeError as e:
+            print(f"GPU配置错误: {e}")
+            print("将使用CPU进行计算")
+            return '/CPU:0'
+    elif has_gpu:
+        print(f"检测到GPU设备，但当前TensorFlow版本({tf.__version__})不支持CUDA加速")
+        print("如需GPU加速，请安装支持CUDA的TensorFlow版本")
+        print("将使用CPU进行计算")
+        return '/CPU:0'
+    else:
+        print("未检测到可用GPU，将使用CPU进行计算")
+        return '/CPU:0'
+
+# 获取首选设备
+preferred_device = get_preferred_device()
 
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import (
@@ -283,7 +303,7 @@ class GobangModel:
             board_feature = np.expand_dims(board_feature, axis=0)
         
         # 获取预测结果
-        with tf.device('/GPU:0' if tf.config.list_physical_devices('GPU') else '/CPU:0'):
+        with tf.device(preferred_device):
             policy_prob, value = self.model.predict(board_feature, verbose=0)
         
         # 将策略概率转换为二维数组
@@ -310,7 +330,7 @@ class GobangModel:
             board_features = np.expand_dims(board_features, axis=0)
         
         # 批量预测
-        with tf.device('/GPU:0' if tf.config.list_physical_devices('GPU') else '/CPU:0'):
+        with tf.device(preferred_device):
             policy_probs, values = self.model.predict(board_features, batch_size=batch_size, verbose=0)
         
         # 转换格式

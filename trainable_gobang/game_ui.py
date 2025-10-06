@@ -5,6 +5,7 @@ import os
 import sys
 import time
 from datetime import datetime
+import argparse
 
 # 确保中文显示正常
 import matplotlib.pyplot as plt
@@ -18,7 +19,7 @@ from trainable_gobang.model import GobangModel
 from trainable_gobang.gobang_game import GobangGame
 
 class GobangUI:
-    def __init__(self, root):
+    def __init__(self, root, model_path=None, ai_strength=None):
         self.root = root
         self.root.title("AI五子棋")
         self.root.resizable(False, False)
@@ -38,7 +39,18 @@ class GobangUI:
         self.temperature = 1.0
         self.c_puct = 5.0
         self.num_simulations = 200
-        self.model_path = "models/best_model.h5"
+        # 使用传入的模型路径，如果没有则使用默认路径
+        self.model_path = model_path if model_path else "models/best_model.h5"
+        
+        # 如果提供了AI强度参数，调整温度参数
+        if ai_strength:
+            try:
+                strength = float(ai_strength)
+                # AI强度和温度成反比关系：强度越高，温度越低
+                self.temperature = max(0.1, min(2.0, 2.1 - strength*2))
+                print(f"AI强度设置为: {strength}, 温度参数调整为: {self.temperature}")
+            except ValueError:
+                print(f"无效的AI强度值: {ai_strength}")
         
         # 创建模型
         self.model = None
@@ -431,11 +443,17 @@ class GobangUI:
             messagebox.showerror("保存失败", f"保存训练数据时出错:\n{str(e)}")
 
 if __name__ == "__main__":
+    # 解析命令行参数
+    parser = argparse.ArgumentParser(description='AI五子棋游戏界面')
+    parser.add_argument('--model_path', type=str, default=None, help='AI模型路径')
+    parser.add_argument('--ai_strength', type=str, default=None, help='AI强度(0.0-1.0)')
+    args = parser.parse_args()
+    
     # 创建主窗口
     root = tk.Tk()
     
-    # 创建游戏界面实例
-    app = GobangUI(root)
+    # 创建游戏界面实例，传入解析的参数
+    app = GobangUI(root, model_path=args.model_path, ai_strength=args.ai_strength)
     
     # 运行主循环
     root.mainloop()
