@@ -54,9 +54,17 @@ class MCTSNode:
         if not self.valid_moves or game_copy.game_over:
             return
             
-        # 使用模型预测
-        board_feature = game_copy.get_board_feature()
-        policy_2d, value = self.model.predict(board_feature)
+        # 使用模型预测或随机策略
+        value = 0.0  # 默认价值为0
+        if self.model is not None:
+            # 使用模型预测
+            board_feature = game_copy.get_board_feature()
+            policy_2d, value = self.model.predict(board_feature)
+        else:
+            # 无模型时使用随机策略
+            policy_2d = np.zeros((self.game.board_size, self.game.board_size))
+            for move in self.valid_moves:
+                policy_2d[move] = 1.0
         
         # 转换为先验概率
         self.policy_probs = {}

@@ -1,5 +1,18 @@
 import numpy as np
 import tensorflow as tf
+# 配置GPU使用
+physical_devices = tf.config.list_physical_devices('GPU')
+if physical_devices:
+    try:
+        # 设置内存增长，避免一次性占用全部GPU内存
+        for gpu in physical_devices:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        print(f"成功配置GPU: {[gpu.name for gpu in physical_devices]}")
+    except RuntimeError as e:
+        print(f"GPU配置错误: {e}")
+else:
+    print("未检测到可用GPU，将使用CPU进行计算")
+
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import (
     Input, Conv2D, BatchNormalization, Activation,
