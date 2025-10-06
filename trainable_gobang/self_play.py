@@ -52,11 +52,17 @@ class MCTSNode:
         self.valid_moves = game_copy.get_valid_moves()
         
         if not self.valid_moves or game_copy.game_over:
-            return
+            # 游戏结束或无合法移动，返回局面评估值
+            if game_copy.game_over:
+                if game_copy.winner == 1:
+                    return 1.0
+                elif game_copy.winner == 2:
+                    return -1.0
+            return 0.0
             
         # 使用模型预测或随机策略
         value = 0.0  # 默认价值为0
-        if self.model is not None:
+        if self.model is not None and hasattr(self.model, 'predict'):
             # 使用模型预测
             board_feature = game_copy.get_board_feature()
             policy_2d, value = self.model.predict(board_feature)
@@ -146,8 +152,8 @@ class SelfPlay:
         
     def mcts_search(self, temperature=1.0):
         """蒙特卡洛树搜索"""
-        if self.model is None:
-            # 如果没有模型，随机选择合法位置
+        if self.model is None or not hasattr(self.model, 'predict'):
+            # 如果没有模型或模型缺少predict方法，随机选择合法位置
             valid_moves = self.game.get_valid_moves()
             if not valid_moves:
                 return None
@@ -241,13 +247,14 @@ class SelfPlay:
                 model=self.model
             )
             
-            for _ in range(min(self.num_simulations // 2, 50)):
-                node = root
-                while not node.is_leaf() and not node.game.game_over:
-                    node = node.select(self.c_puct)
-                
-                if not node.game.game_over:
-                    node.expand()
+            if self.model is not None:
+                for _ in range(min(self.num_simulations // 2, 50)):
+                    node = root
+                    while not node.is_leaf() and not node.game.game_over:
+                        node = node.select(self.c_puct)
+                    
+                    if not node.game.game_over:
+                        node.expand()
             
             # 计算搜索概率分布
             search_probs = np.zeros(self.board_size * self.board_size)

@@ -15,13 +15,63 @@ from evaluate import Evaluator
 import sys
 from datetime import datetime
 
+# 确保logs目录存在
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+if not os.path.exists('logs'):
+    os.makedirs('logs', exist_ok=True)
+
 # 加载优化配置
 def load_optimization_config(config_path='training_optimization_config.json'):
     """加载训练优化配置"""
     if os.path.exists(config_path):
         try:
             with open(config_path, 'r', encoding='utf-8') as f:
-                return json.load(f)
+                config = json.load(f)
+                
+                # 处理新的配置文件结构，确保返回的配置包含所有需要的键
+                result = {}
+                
+                # 从optimizer_config中提取learning_rate
+                if 'optimizer_config' in config and 'learning_rate' in config['optimizer_config']:
+                    result['learning_rate'] = config['optimizer_config']['learning_rate']
+                else:
+                    result['learning_rate'] = 0.001
+                    
+                # 从training_config中提取batch_size和epochs
+                if 'training_config' in config:
+                    if 'batch_size' in config['training_config']:
+                        result['batch_size'] = config['training_config']['batch_size']
+                    if 'epochs' in config['training_config']:
+                        result['epochs'] = config['training_config']['epochs']
+                else:
+                    result['batch_size'] = 128
+                    result['epochs'] = 100
+                    
+                # 从model_config中提取residual_blocks
+                if 'model_config' in config and 'residual_blocks' in config['model_config']:
+                    result['residual_blocks'] = config['model_config']['residual_blocks']
+                else:
+                    result['residual_blocks'] = 8
+                    
+                # 从loss_config中提取policy_weight和value_weight
+                if 'loss_config' in config:
+                    if 'policy_weight' in config['loss_config']:
+                        result['policy_weight'] = config['loss_config']['policy_weight']
+                    if 'value_weight' in config['loss_config']:
+                        result['value_weight'] = config['loss_config']['value_weight']
+                else:
+                    result['policy_weight'] = 1.0
+                    result['value_weight'] = 1.0
+                    
+                # 处理data_augmentation
+                result['data_augmentation'] = config.get('data_augmentation', {
+                    "horizontal_flip": True,
+                    "vertical_flip": True,
+                    "rotation": True,
+                    "noise": True
+                })
+                
+                return result
         except Exception as e:
             print(f"加载配置文件失败: {e}")
     # 返回默认配置
@@ -33,10 +83,10 @@ def load_optimization_config(config_path='training_optimization_config.json'):
         "policy_weight": 1.0,
         "value_weight": 1.0,
         "data_augmentation": {
-            "horizontal_flip": true,
-            "vertical_flip": true,
-            "rotation": true,
-            "noise": true
+            "horizontal_flip": True,
+            "vertical_flip": True,
+            "rotation": True,
+            "noise": True
         }
     }
 
@@ -515,11 +565,12 @@ def train_model(args, has_gpu=False):
     )
     
     # 导入并使用TensorBoard记录学习率
+    # 使用简单的日志目录配置
     tensorboard_callback = tf.keras.callbacks.TensorBoard(
-        log_dir=os.path.join("logs", datetime.now().strftime("%Y%m%d-%H%M%S")),
-        histogram_freq=1,
-        write_graph=True,
-        write_images=True,
+        log_dir='logs',  # 使用简单的日志目录
+        histogram_freq=0,  # 禁用直方图记录
+        write_graph=False,  # 禁用图记录
+        write_images=False,  # 禁用图像记录
         update_freq='epoch'
     )
     
@@ -537,7 +588,8 @@ def train_model(args, has_gpu=False):
     history = None
     
     # 使用优化的回调列表
-    callbacks = [early_stopping, lr_scheduler, checkpoint, tensorboard_callback]
+    # 为了解决TensorBoard目录问题，暂时移除TensorBoard回调
+    callbacks = [early_stopping, lr_scheduler, checkpoint]
     
     for segment in range(total_segments):
         current_epochs = min(segment_size, epochs - segment * segment_size)
@@ -553,7 +605,7 @@ def train_model(args, has_gpu=False):
             batch_size=batch_size,
             validation_split=args.validation_split,
             callbacks=callbacks,
-            use_cosine_schedule=True  # 启用余弦退火学习率调度
+            use_cosine_schedule=False  # 禁用余弦退火学习率调度，使用外部定义的学习率调度器
         )
         
         # 合并历史记录

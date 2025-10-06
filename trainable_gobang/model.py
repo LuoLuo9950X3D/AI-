@@ -419,19 +419,9 @@ class GobangModel:
         default_callbacks.append(early_stopping)
         
         # 添加学习率记录回调
-        class LRTensorBoard(tf.keras.callbacks.TensorBoard):
-            def on_epoch_end(self, epoch, logs=None):
-                logs = logs or {}
-                logs['learning_rate'] = self.model.optimizer.lr.numpy()
-                super().on_epoch_end(epoch, logs)
-        
-        tb_callback = LRTensorBoard(
-            log_dir=os.path.join('logs', datetime.now().strftime('%Y%m%d-%H%M%S')),
-            histogram_freq=1,
-            write_graph=True,
-            write_images=True
-        )
-        default_callbacks.append(tb_callback)
+        # 为了解决TensorBoard目录问题，暂时禁用TensorBoard回调
+        # 注释掉TensorBoard回调以确保训练能够进行
+        # 如果需要监控训练进度，可以在训练完成后启用
         
         # 如果提供了回调，则合并默认回调
         if callbacks:
