@@ -1,0 +1,68 @@
+{
+    "learning_rate_strategy": {
+        "type": "cosine_annealing_with_warmup",
+        "initial_learning_rate": 0.001,
+        "warmup_epochs": 5,
+        "warmup_target_lr": 0.001,
+        "min_lr": 1e-7,
+        "cycle_length": 20,
+        "gamma": 0.5
+    },
+    "optimizer_config": {
+        "type": "adamw",
+        "learning_rate": 0.001,
+        "beta_1": 0.95,
+        "beta_2": 0.999,
+        "epsilon": 1e-8,
+        "weight_decay": 1e-4,
+        "clipnorm": 1.0
+    },
+    "model_config": {
+        "filters": 128,
+        "residual_blocks": 8,
+        "attention_heads": 4,
+        "dropout_rate": 0.2,
+        "use_layer_norm": true,
+        "use_attention": true,
+        "use_swish": true,
+        "use_position_encoding": true
+    },
+    "loss_config": {
+        "policy_weight": 1.0,
+        "value_weight": 1.0,
+        "policy_loss": "categorical_crossentropy",
+        "value_loss": "mse"
+    },
+    "training_config": {
+        "batch_size": 128,
+        "epochs": 100,
+        "validation_split": 0.1,
+        "shuffle": true,
+        "callbacks": {
+            "reduce_lr": {
+                "monitor": "val_loss",
+                "factor": 0.5,
+                "patience": 3,
+                "min_lr": 1e-7
+            },
+            "early_stopping": {
+                "monitor": "val_loss",
+                "patience": 10,
+                "restore_best_weights": true
+            },
+            "model_checkpoint": {
+                "monitor": "val_loss",
+                "save_best_only": true,
+                "save_weights_only": false
+            }
+        }
+    },
+    "data_augmentation": {
+        "enabled": true,
+        "rotate": true,
+        "flip_horizontal": true,
+        "flip_vertical": true,
+        "random_crop": false,
+        "noise_level": 0.0
+    }
+}
